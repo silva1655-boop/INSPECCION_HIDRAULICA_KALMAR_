@@ -6,39 +6,20 @@ import pandas as pd
 import streamlit as st
 
 
-# =========================
-# CONFIGURACIÓN GENERAL
-# =========================
 st.set_page_config(
     page_title="Inspección hidráulica",
     layout="centered",
 )
 
 
-# =========================
-# UTILIDADES
-# =========================
-def find_images_dir() -> Path:
-    """Busca la carpeta images en varias ubicaciones posibles."""
-    base_dir = Path(__file__).resolve().parent
-    candidates = [
-        base_dir / "images",
-        base_dir.parent / "images",
-        Path.cwd() / "images",
-        Path("images"),
-    ]
-
-    for candidate in candidates:
-        if candidate.exists() and candidate.is_dir():
-            return candidate
-
-    # Devuelve la primera opción aunque no exista, para mostrar la ruta esperada
-    return candidates[0]
+def get_base_dir() -> Path:
+    """Retorna la carpeta donde está app.py."""
+    return Path(__file__).resolve().parent
 
 
 def load_reference_images() -> List[Dict[str, Any]]:
-    """Retorna la lista de imágenes de referencia."""
-    image_dir = find_images_dir()
+    """Carga imágenes que están en la misma carpeta que app.py."""
+    base_dir = get_base_dir()
 
     image_filenames = [
         (
@@ -74,14 +55,13 @@ def load_reference_images() -> List[Dict[str, Any]]:
     return [
         {
             "title": title,
-            "path": image_dir / filename,
+            "path": base_dir / filename,
         }
         for title, filename in image_filenames
     ]
 
 
 def initialize_excel(excel_path: Path, columns: List[str]) -> pd.DataFrame:
-    """Crea el Excel si no existe y devuelve el DataFrame actual."""
     if excel_path.exists():
         try:
             return pd.read_excel(excel_path)
@@ -94,13 +74,11 @@ def initialize_excel(excel_path: Path, columns: List[str]) -> pd.DataFrame:
 
 
 def append_to_excel(df: pd.DataFrame, row: Dict[str, Any], excel_path: Path) -> None:
-    """Agrega una fila al Excel usando concat."""
     new_df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     new_df.to_excel(excel_path, index=False)
 
 
 def save_uploaded_image(uploaded_bytes: bytes, output_dir: Path, prefix: str) -> str:
-    """Guarda la imagen capturada y devuelve el nombre del archivo."""
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S%f")
     filename = f"{prefix}_{timestamp}.png"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -112,9 +90,6 @@ def save_uploaded_image(uploaded_bytes: bytes, output_dir: Path, prefix: str) ->
     return filename
 
 
-# =========================
-# APP PRINCIPAL
-# =========================
 def main() -> None:
     st.title("Formulario de inspección de sistemas hidráulicos")
     st.write(
@@ -124,14 +99,13 @@ def main() -> None:
     )
 
     images_info = load_reference_images()
-    images_dir = find_images_dir()
+    base_dir = get_base_dir()
 
     with st.expander("Verificación rápida de archivos", expanded=False):
-        st.write(f"Carpeta de imágenes detectada: `{images_dir}`")
+        st.write(f"Carpeta detectada del proyecto: `{base_dir}`")
         for info in images_info:
             st.write(f"- {info['path'].name}: {'✅' if info['path'].exists() else '❌'}")
 
-    # Columnas del registro
     base_columns = ["fecha", "inspector", "equipo"]
     for idx in range(1, len(images_info) + 1):
         prefix = f"comp{idx}"
